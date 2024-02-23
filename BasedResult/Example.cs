@@ -19,14 +19,8 @@ namespace Example
         public static void UseDivide()
         {
             var res = Divide(5, 1);
-            if (res.IsOk)
-            {
+            if (res) 
                 Console.WriteLine(res.Unwrap());
-            }
-            else
-            {
-                Console.WriteLine(res.UnwrapErr());
-            }
         }
     }
 }
