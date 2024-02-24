@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,7 +22,11 @@ namespace Example
 
         public static void UseDivide()
         {
-            double res = Divide(5, 1);
+            var result = Divide(Double.Epsilon, Double.Pi);
+            if (result.IsOk)
+            {
+                
+            }
         }
     }
 }

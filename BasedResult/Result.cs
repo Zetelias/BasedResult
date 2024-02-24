@@ -1,4 +1,6 @@
-﻿namespace BasedResult
+﻿using System.Diagnostics;
+
+namespace BasedResult
 {
     /// <summary>
     /// An optimized Rust like Result that can either be of type <typeparamref name="OkType"/> or of type <typeparamref name="ErrType"/>.
@@ -16,9 +18,9 @@
         /// </summary>
         internal object Obj;
 
-        public bool IsOk { get; internal set; }
-        public bool IsErr { get => !IsOk; }
-        
+        public bool IsOk { get; internal init; }
+        public bool IsErr => !IsOk;
+
         public static Result<OkType, ErrType> Ok(OkType okType)
         {
             return new Result<OkType, ErrType> { Obj = okType, IsOk = true };
@@ -57,10 +59,29 @@
                     case OkType ok:
                         return ok;
                     default:
-                        throw new InvalidOperationException(); // should never happen
+                        throw new UnreachableException("Called Result.Unwrap() on an Ok value " +
+                                                       "that held the wrong type.\n" +
+                                                       "Should never happen, please open an issue."); // should never happen
                 }
             }
-            throw new InvalidOperationException();
+            throw new InvalidOperationException("Called Result.Unwrap() on an Err value");
+        }
+        
+        public OkType Expect(string errorMessage) 
+        {
+            if (IsOk)
+            {
+                switch (Obj)
+                {
+                    case OkType ok:
+                        return ok;
+                    default:
+                        throw new UnreachableException("Called Result.Expect() on an Ok value " +
+                                                       "that held the wrong type.\n" +
+                                                       "Should never happen, please open an issue."); // should never happen
+                }
+            }
+            throw new InvalidOperationException(errorMessage);
         }
 
         public OkType UnwrapOr(OkType fallback)
@@ -76,6 +97,21 @@
                 }
             }
             return fallback;
+        }
+
+        public OkType UnwrapOrElse(Func<OkType> fn)
+        {
+            if (IsOk)
+            {
+                switch (Obj)
+                {
+                    case OkType ok:
+                        return ok;
+                    default:
+                        return fn(); // should never happen
+                }
+            }
+            return fn();
         }
 
         public OkType? UnwrapOrDefault()
@@ -102,10 +138,12 @@
                     case ErrType err:
                         return err;
                     default:
-                        throw new InvalidOperationException();
+                        throw new UnreachableException("Called Result.UnwrapErr() on an Err " +
+                                                       "Result but that held the wrong type.\n" +
+                                                       "Should never happen, please open an issue.");
                 }
             }
-            throw new InvalidOperationException();
+            throw new InvalidOperationException("Called Result.UnwrapErr() on an Ok Result");
         }
 
         public ErrType UnwrapOr(ErrType fallback)
