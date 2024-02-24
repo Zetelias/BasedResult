@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define ENABLE_IMPLICIT_UNWRAPPING
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,9 +20,7 @@ namespace Example
 
         public static void UseDivide()
         {
-            var res = Divide(5, 1);
-            if (res) 
-                Console.WriteLine(res.Unwrap());
+            double res = Divide(5, 1);
         }
     }
 }
