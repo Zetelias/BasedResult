@@ -6,9 +6,16 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>BasedResult</Title>
+	<Description>A Rust-like result in a Csharp-ier way</Description>
     <PackageProjectUrl>https://www.github.com/Zetelias/BasedResult</PackageProjectUrl>
-    <Version>1.1</Version>
+    <Version>1.3</Version>
   </PropertyGroup>
+
+	<PropertyGroup>
+		<PackageLicenseUrl>https://www.gnu.org/licenses/agpl-3.0.html</PackageLicenseUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIconUrl>https://www.svgrepo.com/show/382239/clipboard-document-result.svg</PackageIconUrl>
+	</PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DocumentationFile>bin\Debug\net8.0\BasedResult.xml</DocumentationFile>
@@ -21,5 +28,9 @@
   <ItemGroup>
     <PackageReference Include="NUnit" Version="4.0.1" />
   </ItemGroup>
+
+	<ItemGroup>
+		<None Include=".\README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 
 </Project>
