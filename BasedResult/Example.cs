@@ -22,11 +22,13 @@ namespace Example
 
         public static void UseDivide()
         {
-            var result = Divide(Double.Epsilon, Double.Pi);
-            if (result.IsOk)
-            {
-                
-            }
+            double x = 8.4;
+            double y = 5.7;
+            Divide(x ,y).Match(
+                ok => Console.WriteLine($"{x}/{y} = {ok}"),
+                err => Console.WriteLine($"{x}/{y} produced error: {err}")
+                );
         }
+        
     }
 }

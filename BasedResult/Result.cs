@@ -39,6 +39,38 @@ namespace BasedResult
 
         public static implicit operator bool(Result<OkType, ErrType> result)
             => result.IsOk;
+        
+        public void Match(
+            Action<OkType> okAction,
+            Action<ErrType> errAction)
+        {
+            if (IsOk)
+            {
+                okAction(Unwrap());
+            }
+            else
+            {
+                errAction(UnwrapErr());
+            }
+        }
+
+        public static Result<OkType, string> FirstWorking(Result<OkType, ErrType>[] results)
+        {
+            // If there's an OK result in the array, this will resolve to an Ok result
+            // else, it will be null
+            var okResults = results
+                .FirstOrDefault(result => result.IsOk, defaultValue: null);
+
+            
+            // So, if it's not null we return the unwrapped value
+            // or, if it's null, we return an error message
+            return okResults.Unwrap() ??
+                   Result<OkType, string>.Err("No Ok result in array");
+        }
+
+        public static Result<OkType, string> FirstWorking(List<Result<OkType, ErrType>> results)
+            => FirstWorking(results.ToArray());
+        
 
         #if ENABLE_IMPLICIT_UNWRAPPING // Locked behind a label as it can lead to unexpected results but can make life easier
 
