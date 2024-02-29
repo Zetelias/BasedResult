@@ -18,15 +18,38 @@ namespace BasedResult
         /// </summary>
         internal object Obj;
 
+        /// <summary>
+        /// Represents if the result is successful.
+        /// If .IsOk is true, the result contains an OkType.
+        /// Ex: if .Unwrap() is safe to call.
+        /// </summary>
         public bool IsOk { get; internal init; }
+        
+        /// <summary>
+        /// Represents if the result has failed.
+        /// If .IsErr is true, the result contains an ErrType.
+        /// Ex: if .UnwrapErr() is safe to call.
+        /// </summary>
         public bool IsErr => !IsOk;
 
+        /// <summary>
+        /// Returns a Result that's Ok, with value <paramref name="okType"/>
+        /// and given generics.
+        /// </summary>
+        /// <param name="okType">The Ok value to be held in the result</param>
+        /// <returns>An Ok result with value <paramref name="okType"/></returns>
         public static Result<OkType, ErrType> Ok(OkType okType)
         {
             return new Result<OkType, ErrType> { Obj = okType, IsOk = true };
         }
 
-        public static Result<OkType, ErrType> Err(ErrType errType)
+        /// <summary>
+        /// Returns a Result that's Err, with value <paramref name="errType"/>
+        /// and given generics.
+        /// </summary>
+        /// <param name="errType">the Err value to be held in the result</param>
+        /// <returns>An Err result with value <paramref name="errType"/></returns>
+        public static Result<OkType, ErrType> Err(ErrType errType) 
         {
             return new Result<OkType, ErrType> { Obj = errType, IsOk = false };
         }
@@ -40,6 +63,16 @@ namespace BasedResult
         public static implicit operator bool(Result<OkType, ErrType> result)
             => result.IsOk;
         
+        /// <summary>
+        /// Executes the corresponding Action,
+        /// with an <typeparamref name="OkType"/> or an <typeparamref name="ErrType"/>
+        /// based on the state of the Result.
+        /// </summary>
+        /// <param name="okAction">The action to execute with an
+        /// <typeparamref name="OkType"/> if the result is Ok. </param>
+        /// <param name="errAction"> The action to execute with an
+        /// <typeparamref name="ErrType"/> if the result is Err.
+        /// </param>
         public void Match(
             Action<OkType> okAction,
             Action<ErrType> errAction)
@@ -54,22 +87,31 @@ namespace BasedResult
             }
         }
 
-        public static Result<OkType, string> FirstWorking(Result<OkType, ErrType>[] results)
+        /// <summary>
+        /// Returns the first Ok Result in <paramref name="results"/>,
+        /// or an error message if none of the Result's were Ok.
+        /// </summary>
+        /// <param name="results">An array of result, we will take the first
+        /// result that's Ok in this array.</param>
+        /// <returns>The Ok value of the first Ok result in array <paramref name="results"/>
+        /// or an error message if none of the results were Ok. </returns>
+        public static Result<OkType, string> FirstOk(Result<OkType, ErrType>[] results)
         {
             // If there's an OK result in the array, this will resolve to an Ok result
             // else, it will be null
-            var okResults = results
+            var okResult = results
                 .FirstOrDefault(result => result.IsOk, defaultValue: null);
 
             
             // So, if it's not null we return the unwrapped value
             // or, if it's null, we return an error message
-            return okResults.Unwrap() ??
+            return okResult.Unwrap() ??
                    Result<OkType, string>.Err("No Ok result in array");
         }
 
-        public static Result<OkType, string> FirstWorking(List<Result<OkType, ErrType>> results)
-            => FirstWorking(results.ToArray());
+        
+        public static Result<OkType, string> FirstOk(List<Result<OkType, ErrType>> results)
+            => FirstOk(results.ToArray());
         
 
         #if ENABLE_IMPLICIT_UNWRAPPING // Locked behind a label as it can lead to unexpected results but can make life easier
@@ -82,6 +124,12 @@ namespace BasedResult
 
         #endif
 
+        /// <summary>
+        /// Returns the Ok value held by the Result,
+        /// or an Exception if the Result is not Ok.
+        /// </summary>
+        /// <returns>The Ok value held by the Result if it's Ok</returns>
+        /// <exception cref="InvalidOperationException">If the result is Err</exception>
         public OkType Unwrap()
         {
             if (IsOk)
@@ -176,6 +224,22 @@ namespace BasedResult
                 }
             }
             throw new InvalidOperationException("Called Result.UnwrapErr() on an Ok Result");
+        }
+
+        public Result<NewOk, NewErr> AndThen<NewOk, NewErr>(Func<OkType, Result<NewOk, NewErr>> fn, NewErr error = default)
+        {
+            if (IsOk)
+            {
+                switch (Obj)
+                {
+                    case OkType ok:
+                        return fn(ok);
+                    default:
+                        return error;
+                }
+            }
+
+            return error;
         }
 
         public ErrType UnwrapOr(ErrType fallback)
