@@ -4,6 +4,7 @@ namespace BasedResult
 {
     /// <summary>
     /// An optimized Rust like Result that can either be of type <typeparamref name="OkType"/> or of type <typeparamref name="ErrType"/>.
+    /// It is either one or the other, like Rust enums, so it does not waste memory.
     /// A result of type <typeparamref name="OkType"/> represents a successfull operation while a result of type <typeparamref name="ErrType"/>
     /// represents an unsuccessfull operation.
     /// </summary>
@@ -15,6 +16,7 @@ namespace BasedResult
         /// <summary>
         /// The underlying owned data in the Result.
         /// It can either be <typeparamref name="OkType"/> or <typeparamref name="ErrType"/>.
+        /// If IsOk is true, this should hold and <typeparamref name="OkType"/> and visa-versa.
         /// </summary>
         internal object Obj;
 
@@ -86,6 +88,38 @@ namespace BasedResult
                 errAction(UnwrapErr());
             }
         }
+        
+        /// <summary>
+        /// Chains multiple result together, with lambdas.
+        /// If the result this method is being called on is Ok,
+        /// it calls <paramref name="fn"/> with the result's Ok value and returns
+        /// the result of <paramref name="fn"/>. If the current result is not ok,
+        /// it returns an Err result holding <paramref name="error"/>.
+        /// </summary>
+        /// <param name="fn">A function, most of the time a lambda
+        /// to call with the Ok value held by the Result if this is Ok.</param>
+        /// <param name="error">What to error with if this Result is not Ok</param>
+        /// <typeparam name="NewOk">The Ok type of the result <paramref name="fn"/>
+        /// returns. Implicit most of the time.</typeparam>
+        /// <typeparam name="NewErr">The Err type of the result <paramref name="fn"/>
+        /// returns. Implicit most of the time.</typeparam>
+        /// <returns>If we're ok, the Result <typeparamref name="fn"/> returns.
+        /// Else, a result holding <paramref name="error"/></returns>
+        public Result<NewOk, NewErr> AndThen<NewOk, NewErr>(Func<OkType, Result<NewOk, NewErr>> fn, NewErr error)
+        {
+            if (IsOk)
+            {
+                switch (Obj)
+                {
+                    case OkType ok:
+                        return fn(ok);
+                    default:
+                        return error;
+                }
+            }
+
+            return error;
+        }
 
         /// <summary>
         /// Returns the first Ok Result in <paramref name="results"/>,
@@ -129,7 +163,8 @@ namespace BasedResult
         /// or an Exception if the Result is not Ok.
         /// </summary>
         /// <returns>The Ok value held by the Result if it's Ok</returns>
-        /// <exception cref="InvalidOperationException">If the result is Err</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the result is Err</exception>
+        /// <seealso cref="Expect"/>
         public OkType Unwrap()
         {
             if (IsOk)
@@ -147,6 +182,17 @@ namespace BasedResult
             throw new InvalidOperationException("Called Result.Unwrap() on an Err value");
         }
         
+       
+        /// <summary>
+        /// Returns the Ok value held by the Result,
+        /// or an Exception with error message <paramref name="errorMessage"/>
+        /// if the result is not Ok.
+        /// </summary>
+        /// <param name="errorMessage">The error message to include in the exception thrown
+        /// when the Result is not Ok </param>
+        /// <returns>The Ok value held by the Result if it's Ok</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the result is Err,
+        /// with content <paramref name="errorMessage"/></exception>
         public OkType Expect(string errorMessage) 
         {
             if (IsOk)
@@ -164,6 +210,14 @@ namespace BasedResult
             throw new InvalidOperationException(errorMessage);
         }
 
+        /// <summary>
+        /// Returns the Ok value held by the Result if it's Ok,
+        /// or <paramref name="fallback"/> if it's not.
+        /// This has the advantage of never throwing exceptions.
+        /// </summary>
+        /// <param name="fallback"></param>
+        /// <returns>The Ok value held by the Result if it was Ok,
+        /// else, <paramref name="fallback"/></returns>
         public OkType UnwrapOr(OkType fallback)
         {
             if (IsOk)
@@ -179,6 +233,14 @@ namespace BasedResult
             return fallback;
         }
 
+        /// <summary>
+        /// Returns the Ok value held by the result, or the <typeparamref name="OkType"/>
+        /// result of executing <paramref name="fn"/> if the Result is not Ok.
+        /// </summary>
+        /// <param name="fn">The function to execute and get an <typeparamref name="OkType"/>
+        /// from if the Result is not Ok.</param>
+        /// <returns>The Ok value of the Result if it was Ok, else
+        /// the result of executing <paramref name="fn"/> </returns>
         public OkType UnwrapOrElse(Func<OkType> fn)
         {
             if (IsOk)
@@ -194,6 +256,16 @@ namespace BasedResult
             return fn();
         }
 
+        /// <summary>
+        /// Returns the Ok value held by the Result, else,
+        /// the default value of <typeparamref name="OkType"/>.
+        /// Since <typeparamref name="OkType"/> could have no
+        /// default values and return null, this returns a
+        /// nullable.
+        /// </summary>
+        /// <returns>The Ok value held by the Result if it's ok,
+        /// else the default value of <typeparamref name="OkType"/>,
+        /// or null if it has no default or if the default is null.</returns>
         public OkType? UnwrapOrDefault()
         {
             if (IsOk)
@@ -209,6 +281,13 @@ namespace BasedResult
             return default;
         }
 
+        /// <summary>
+        /// Returns the Err value held by the result, or throws
+        /// InvalidOperationException if the result is Ok.
+        /// </summary>
+        /// <returns>The Err value held by the result</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the
+        /// result is Ok</exception>
         public ErrType UnwrapErr()
         {
             if (!IsOk)
@@ -225,24 +304,16 @@ namespace BasedResult
             }
             throw new InvalidOperationException("Called Result.UnwrapErr() on an Ok Result");
         }
-
-        public Result<NewOk, NewErr> AndThen<NewOk, NewErr>(Func<OkType, Result<NewOk, NewErr>> fn, NewErr error = default)
-        {
-            if (IsOk)
-            {
-                switch (Obj)
-                {
-                    case OkType ok:
-                        return fn(ok);
-                    default:
-                        return error;
-                }
-            }
-
-            return error;
-        }
-
-        public ErrType UnwrapOr(ErrType fallback)
+        
+        /// <summary>
+        /// Returns the Err value held by the Result if it's Err.
+        /// Else, returns <paramref name="fallback"/>
+        /// </summary>
+        /// <param name="fallback"> What to return if the
+        /// Result is Ok</param>
+        /// <returns>The Err value held by the Result if it's Err,
+        /// else <paramref name="fallback"/></returns>
+        public ErrType UnwrapErrOr(ErrType fallback)
         {
             if (!IsOk)
             {
@@ -257,6 +328,16 @@ namespace BasedResult
             return fallback;
         }
 
+        /// <summary>
+        /// Returns the Err value held by the Result, if the Result is Err.
+        /// Else it will return default <typeparamref name="ErrType"/>.
+        /// Since <typeparamref name="ErrType"/>'s default can be null,
+        /// this can return something null, so beware.
+        /// </summary>
+        /// <returns>The Err value held by the Result, if the Result is Err.
+        /// Else it will return default <typeparamref name="ErrType"/>.
+        /// Since <typeparamref name="ErrType"/>'s default can be null,
+        /// this can return something null, so beware.</returns>
         public ErrType? UnwrapErrOrDefault()
         {
             if (!IsOk)
